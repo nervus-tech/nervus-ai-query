@@ -1,5 +1,9 @@
 from fastapi import FastAPI
+import os
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
 app = FastAPI()
 
 @app.get("/")
