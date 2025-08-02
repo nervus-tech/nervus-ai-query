@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   ai-query:
-    image: ghcr.io/nervus-tech/nervus-ai-query:v1.0.0
+    image: ghcr.io/nervus-tech/nervus-ai-query:v1.0.0-staging
     container_name: ai-query-staging
     ports:
       - "8118:8000"
