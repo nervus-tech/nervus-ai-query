@@ -7,13 +7,14 @@ services:
     ports:
       - "8118:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/ai_query_db
+      - DATABASE_URL=postgresql://nervus_user:secure_password@postgres:5432/nervus
       - MINIO_URL=http://minio:9000
       - MINIO_ACCESS_KEY=minio_access
       - MINIO_SECRET_KEY=minio_secret
+      - SCHEMA_NAME=staging_ai_query
     networks:
-      - ai-query-network
+      - nervus-infrastructure_default
 
 networks:
-  ai-query-network:
-    driver: bridge 
+  nervus-infrastructure_default:
+    external: true 
