@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  ai-query-local:
+    image: ghcr.io/nervus-tech/nervus-ai-query:v1.1.0-local
+    container_name: ai-query-local
+    ports:
+      - "8117:8000"
+    environment:
+      - DATABASE_URL=postgresql://nervus_user:secure_password@postgres-local:5432/nervus
+      - MONGODB_URL=mongodb://mongo-local:27017/nervus
+      - MINIO_URL=http://minio-local:9000
+      - MINIO_ACCESS_KEY=minio_access
+      - MINIO_SECRET_KEY=minio_secret
+      - SCHEMA_NAME=local_ai_query
+      - EUREKA_URL=http://eureka-local:8761
+      - SERVICE_PORT=8000
+      - SERVICE_NAME=AI-QUERY
+      - HOST_NAME=ai-query-local
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+    networks:
+      - nervus-local-network
+
+networks:
+  nervus-local-network:
+    external: true 
