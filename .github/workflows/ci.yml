@@ -1,0 +1,132 @@
+name: CI Pipeline - AI Query Service
+
+on:
+  push:
+    branches: [main, develop, feature/*]
+  pull_request:
+    branches: [main, develop, feature/*]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: nervus_user
+          POSTGRES_PASSWORD: secure_password
+          POSTGRES_DB: nervus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mongo:
+        image: mongo:6
+        ports:
+          - 27017:27017
+
+      eureka:
+        image: ghcr.io/nervus-tech/nervus-eureka-server:v1.0.0
+        ports:
+          - 8761:8761
+
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minio_access
+          MINIO_ROOT_PASSWORD: minio_secret
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: nervus-ai-query
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create Schema
+        run: |
+          psql -h localhost -U nervus_user -d nervus -c "CREATE SCHEMA IF NOT EXISTS local_ai_query;"
+
+      - name: Run unit tests (if any)
+        run: |
+          if [ -d "nervus-ai-query/tests" ] && [ "$(ls -A nervus-ai-query/tests)" ]; then
+            pytest -q
+          else
+            echo "⚠️ No Python tests found, skipping"
+          fi
+
+      - name: Build Docker Image
+        working-directory: nervus-ai-query
+        run: |
+          docker build -t ghcr.io/nervus-tech/nervus-ai-query:${{ github.sha }} .
+          docker tag ghcr.io/nervus-tech/nervus-ai-query:${{ github.sha }} ghcr.io/nervus-tech/nervus-ai-query:latest
+
+      - name: Security Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/nervus-tech/nervus-ai-query:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          vuln-type: 'os,library'
+          ignore-unfixed: true
+
+      - name: Upload Trivy Scan Results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Test Docker Container
+        working-directory: nervus-ai-query
+        run: |
+          docker run -d --name ai-query-test -p 8000:8000 \
+            -e DATABASE_URL=postgresql://nervus_user:secure_password@localhost:5432/nervus \
+            -e MONGODB_URL=mongodb://localhost:27017/nervus \
+            -e MINIO_URL=http://localhost:9000 \
+            -e MINIO_ACCESS_KEY=minio_access \
+            -e MINIO_SECRET_KEY=minio_secret \
+            -e SCHEMA_NAME=local_ai_query \
+            -e EUREKA_URL=http://localhost:8761 \
+            -e SERVICE_PORT=8000 \
+            -e SERVICE_NAME=AI-QUERY \
+            -e HOST_NAME=ai-query-ci \
+            ghcr.io/nervus-tech/nervus-ai-query:${{ github.sha }}
+          sleep 25
+          curl -f http://localhost:8000/actuator/health || (docker logs ai-query-test; exit 1)
+          docker stop ai-query-test
+          docker rm ai-query-test
+
+      - name: Push to Registry (on main/develop)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        run: |
+          echo ${{ secrets.GH_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker push ghcr.io/nervus-tech/nervus-ai-query:${{ github.sha }}
+          docker push ghcr.io/nervus-tech/nervus-ai-query:latest
+
+  # duplicate block removed
