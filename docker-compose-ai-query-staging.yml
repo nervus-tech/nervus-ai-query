@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  app:
+    extends:
+      file: docker-compose-ai-query-base.yml
+      service: app
+    container_name: ai-query-staging
+    ports:
+      - "8118:8000"
+    environment:
+      - SCHEMA_NAME=staging_ai_query
+      - EUREKA_URL=http://eureka:8761
+      - HOST_NAME=ai-query-staging
+      - TAG=v1.1.0-staging
+    networks:
+      - nervus-infrastructure_default
+
+networks:
+  nervus-infrastructure_default:
+    external: true

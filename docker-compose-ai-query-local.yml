@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  app:
+    extends:
+      file: docker-compose-ai-query-base.yml
+      service: app
+    container_name: ai-query-local
+    ports:
+      - "8117:8000"
+    environment:
+      - SCHEMA_NAME=local_ai_query
+      - EUREKA_URL=http://eureka-local:8761
+      - HOST_NAME=ai-query-local
+      - TAG=v1.1.0-local
+    networks:
+      - nervus-local-network
+
+networks:
+  nervus-local-network:
+    external: true

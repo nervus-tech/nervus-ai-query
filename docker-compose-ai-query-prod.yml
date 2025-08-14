@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  app:
+    extends:
+      file: docker-compose-ai-query-base.yml
+      service: app
+    container_name: ai-query-prod
+    ports:
+      - "8119:8000"
+    environment:
+      - SCHEMA_NAME=prod_ai_query
+      - EUREKA_URL=http://eureka:8761
+      - HOST_NAME=ai-query-prod
+      - TAG=v1.1.0-prod
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 3G
+    networks:
+      - nervus-infrastructure_default
+
+networks:
+  nervus-infrastructure_default:
+    external: true
