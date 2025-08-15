@@ -11,15 +11,14 @@ services:
       - SCHEMA_NAME=prod_ai_query
       - EUREKA_URL=http://eureka:8761
       - HOST_NAME=ai-query-prod
-      - TAG=v1.1.0-prod
     deploy:
       resources:
         limits:
           cpus: "1.5"
           memory: 3G
     networks:
-      - nervus-infrastructure_default
+      - nervus-network
 
 networks:
-  nervus-infrastructure_default:
+  nervus-network:
     external: true
